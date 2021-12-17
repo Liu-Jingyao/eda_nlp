@@ -80,7 +80,7 @@ def tfidf_synonym_replacement(words, word_tfidf, n):
         if len(synonyms) >= 1:
             synonym = random.choice(list(synonyms))
             new_words = [synonym if word == replaced_word else word for word in new_words]
-            print("replaced", replaced_word, "with", synonym)
+            # print("replaced", replaced_word, "with", synonym)
             num_replaced += 1
         if num_replaced >= n:  # only replace up to n words
             break
@@ -102,7 +102,7 @@ def synonym_replacement(words, n):
         if len(synonyms) >= 1:
             synonym = random.choice(list(synonyms))
             new_words = [synonym if word == random_word else word for word in new_words]
-            print("replaced", random_word, "with", synonym)
+            # print("replaced", random_word, "with", synonym)
             num_replaced += 1
         if num_replaced >= n:  # only replace up to n words
             break
