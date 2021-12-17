@@ -69,21 +69,21 @@ def gen_eda(train_orig, output_file, alpha_sr, alpha_ri, alpha_rs, alpha_rd, num
     writer = open(output_file, 'w')
     lines = open(train_orig, 'r', encoding="utf-8").readlines()
 
-    vectorizer = TfidfVectorizer(stop_words=None, token_pattern=r"(?u)\b[A-Za-z]+\b")
-    vectors = vectorizer.fit_transform(lines)
-    feature_names = vectorizer.get_feature_names()
-    dense = vectors.todense()
-    denselist = dense.tolist()
-    df = pd.DataFrame(denselist, columns=feature_names)
-
-    word_tfidf_list = df.to_dict('records')
-    word_tfidf_list = [[word_tfidf_new for word_tfidf_new in sorted(word_tfidf.items(), key=lambda kv:kv[1]) if word_tfidf_new[1]] for word_tfidf in word_tfidf_list]
-
     for i, line in enumerate(lines):
         parts = line[:-1].split('\t')
         label = parts[0]
         sentence = parts[1]
         if tfidf:
+            vectorizer = TfidfVectorizer(stop_words=None, token_pattern=r"(?u)\b[A-Za-z]+\b")
+            vectors = vectorizer.fit_transform(lines)
+            feature_names = vectorizer.get_feature_names()
+            dense = vectors.todense()
+            denselist = dense.tolist()
+            df = pd.DataFrame(denselist, columns=feature_names)
+
+            word_tfidf_list = df.to_dict('records')
+            word_tfidf_list = [[word_tfidf_new for word_tfidf_new in sorted(word_tfidf.items(), key=lambda kv: kv[1]) if
+                                word_tfidf_new[1]] for word_tfidf in word_tfidf_list]
             aug_sentences = tfidf_eda(sentence, word_tfidf_list[i], alpha_sr=alpha_sr, alpha_ri=alpha_ri,
                                       alpha_rs=alpha_rs, p_rd=alpha_rd, num_aug=num_aug)
         else:
