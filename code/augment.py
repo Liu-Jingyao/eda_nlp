@@ -3,6 +3,8 @@
 
 from eda import *
 import pandas as pd
+from gensim import corpora
+from gensim import models
 
 # 显示所有列
 pd.set_option('display.max_columns', None)
@@ -90,26 +92,52 @@ def get_only_chars(line):
     return clean_line
 
 
+def get_word_tfidf_list(sentences):
+    # vectorizer = TfidfVectorizer(stop_words=None, token_pattern=r"(?u)\b[A-Za-z]+\b")
+    # vectors = vectorizer.fit_transform([get_only_chars(line) for line in lines])
+    # feature_names = vectorizer.get_feature_names()
+    # dense = vectors.todense()
+    # denselist = dense.tolist()
+    # df = pd.DataFrame(denselist, columns=feature_names)
+    #
+    # word_tfidf_list = df.to_dict('records')
+    # Create a set of frequent words
+    # Lowercase each document, split it by white space and filter out stopwords
+    texts = [[word for word in get_only_chars(document).lower().split()]for document in sentences]
+    # Count word frequencies
+    from collections import defaultdict
+    frequency = defaultdict(int)
+    for text in texts:
+        for token in text:
+            frequency[token] += 1
+    # Only keep words that appear more than once
+    processed_corpus = texts
+    dictionary = corpora.Dictionary(processed_corpus)
+    bow_corpus = [dictionary.doc2bow(text) for text in processed_corpus]
+    # train the model
+    tfidf = models.TfidfModel(bow_corpus)
+    # transform the "system minors" string
+    word_tfidf_list = []
+    id2token = {item[1]: item[0] for item in dictionary.token2id.items()}
+    for text in processed_corpus:
+        word_tfidf = {id2token[_[0]]: _[1] for _ in tfidf[dictionary.doc2bow(text)]}
+        word_tfidf_list.append(word_tfidf)
+    word_tfidf_list = [[word_tfidf_new for word_tfidf_new in sorted(word_tfidf.items(), key=lambda kv: kv[1]) if
+                        word_tfidf_new[1]] for word_tfidf in word_tfidf_list]
+    return word_tfidf_list
+
+
 # generate more data with standard augmentation
 def gen_eda(train_orig, output_file, alpha_sr, alpha_ri, alpha_rs, alpha_rd, num_aug=9):
     writer = open(output_file, 'w')
     lines = open(train_orig, 'r', encoding="utf-8").readlines()
-
-    for i, line in enumerate(lines):
-        parts = line[:-1].split('\t')
-        label = parts[0]
-        sentence = parts[1]
+    lines_data = [line[:-1].split('\t') for line in lines]
+    sentences = [data[1] for data in lines_data]
+    word_tfidf_list = get_word_tfidf_list(sentences)
+    for i, data in enumerate(lines_data):
+        label = data[0]
+        sentence = data[1]
         if tfidf:
-            vectorizer = TfidfVectorizer(stop_words=None, token_pattern=r"(?u)\b[A-Za-z]+\b")
-            vectors = vectorizer.fit_transform([get_only_chars(line) for line in lines])
-            feature_names = vectorizer.get_feature_names()
-            dense = vectors.todense()
-            denselist = dense.tolist()
-            df = pd.DataFrame(denselist, columns=feature_names)
-
-            word_tfidf_list = df.to_dict('records')
-            word_tfidf_list = [[word_tfidf_new for word_tfidf_new in sorted(word_tfidf.items(), key=lambda kv: kv[1]) if
-                                word_tfidf_new[1]] for word_tfidf in word_tfidf_list]
             aug_sentences = tfidf_eda(sentence, word_tfidf_list[i], alpha_sr=alpha_sr, alpha_ri=alpha_ri,
                                       alpha_rs=alpha_rs, p_rd=alpha_rd, num_aug=num_aug)
         else:
