@@ -2,6 +2,13 @@
 # Jason Wei and Kai Zou
 
 from eda import *
+import pandas as pd
+#显示所有列
+pd.set_option('display.max_columns', None)
+#显示所有行
+pd.set_option('display.max_rows', None)
+#设置value的显示长度为100，默认为50
+pd.set_option('max_colwidth',100)
 
 #arguments to be parsed from command line
 import argparse
@@ -13,6 +20,7 @@ ap.add_argument("--alpha_sr", required=False, type=float, help="percent of words
 ap.add_argument("--alpha_ri", required=False, type=float, help="percent of words in each sentence to be inserted")
 ap.add_argument("--alpha_rs", required=False, type=float, help="percent of words in each sentence to be swapped")
 ap.add_argument("--alpha_rd", required=False, type=float, help="percent of words in each sentence to be deleted")
+ap.add_argument("--tfidf", required=False, type=int, help="use tfidf to maintain keywords")
 args = ap.parse_args()
 
 #the output file
@@ -51,17 +59,35 @@ if args.alpha_rd is not None:
 if alpha_sr == alpha_ri == alpha_rs == alpha_rd == 0:
      ap.error('At least one alpha should be greater than zero')
 
+tfidf = 0
+if args.tfidf is not None:
+    tfidf = args.tfidf
+
 #generate more data with standard augmentation
 def gen_eda(train_orig, output_file, alpha_sr, alpha_ri, alpha_rs, alpha_rd, num_aug=9):
 
     writer = open(output_file, 'w')
-    lines = open(train_orig, 'r').readlines()
+    lines = open(train_orig, 'r', encoding="utf-8").readlines()
+
+    vectorizer = TfidfVectorizer(stop_words=None, token_pattern=r"(?u)\b[A-Za-z]+\b")
+    vectors = vectorizer.fit_transform(lines)
+    feature_names = vectorizer.get_feature_names()
+    dense = vectors.todense()
+    denselist = dense.tolist()
+    df = pd.DataFrame(denselist, columns=feature_names)
+
+    word_tfidf_list = df.to_dict('records')
+    word_tfidf_list = [[word_tfidf_new for word_tfidf_new in sorted(word_tfidf.items(), key=lambda kv:kv[1]) if word_tfidf_new[1]] for word_tfidf in word_tfidf_list]
 
     for i, line in enumerate(lines):
         parts = line[:-1].split('\t')
         label = parts[0]
         sentence = parts[1]
-        aug_sentences = eda(sentence, alpha_sr=alpha_sr, alpha_ri=alpha_ri, alpha_rs=alpha_rs, p_rd=alpha_rd, num_aug=num_aug)
+        if tfidf:
+            aug_sentences = tfidf_eda(sentence, word_tfidf_list[i], alpha_sr=alpha_sr, alpha_ri=alpha_ri,
+                                      alpha_rs=alpha_rs, p_rd=alpha_rd, num_aug=num_aug)
+        else:
+            aug_sentences = eda(sentence, alpha_sr=alpha_sr, alpha_ri=alpha_ri, alpha_rs=alpha_rs, p_rd=alpha_rd, num_aug=num_aug)
         for aug_sentence in aug_sentences:
             writer.write(label + "\t" + aug_sentence + '\n')
 
